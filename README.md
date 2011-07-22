@@ -5,3 +5,5 @@ A simple Javascript-based proof-of-concept for analyzing family relationships.
 ## Demo
 
 [http://bencrowder.net/sandbox/gen/family-analysis/](http://bencrowder.net/sandbox/gen/family-analysis/)
+
+Updated with FamilySearch integration by Logan Allred

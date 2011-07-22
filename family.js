@@ -572,6 +572,9 @@ function sortArray(a, b) {
 
 
 $(document).ready(function() {
+  //  $("#authlink").button().text("Sign In");
+
+
 	// set up the canvas
 	var canvas = document.getElementById("timeline");
 	canvas.width = $("#timeline").width();
@@ -592,7 +595,7 @@ $(document).ready(function() {
 	});
 
 	// for removing children
-	$(".remove_button").click(function() {
+	$("#sidebar").delegate(".remove_button", "click", function() {
 		var child_id = $(this).parent().attr("id");
 		$(this).parent().remove();					// remove from sidebar
 		$("#" + child_id + "_analysis").remove();	// remove the analysis table
@@ -667,4 +670,168 @@ $(document).ready(function() {
 
 		return false;
 	});
+
+  $("#lookupButton").click(function() {
+    // clear out existing data
+    $("#sidebar .remove_button").click();
+    updatePersonData({}, "father");
+    updatePersonData({}, "mother");
+    
+    $(".spinner").addClass("loading");
+    // validate and process form here
+    getData("familytree/v2/person/"+$("#fsid").val().trim()+"?families=summary&children=all", handleLookupResults);
+    return false;
+  });
+  getData("identity/v2/user", function(data) {
+    if (data.users && data.users[0]) {
+      $("#authlink").text("Sign Out").attr("href", "").click(signOut);
+      $(".welcome span").html("Welcome, "+data.users[0].names[0].value);
+      $("#lookupForm").show();
+    }
+  });
 });
+
+function getData(request, callback) {
+  var params = {
+    dataFormat: "application/json"
+  }
+  var delimeter = request.indexOf("?") >= 0 ? "&" : "?";
+  var url = "https://api.familysearch.org/" + request + delimeter + $.param(params);
+//  var url = "http://www.dev.usys.org/" + request + delimeter + $.param(params);
+  console.log(url);
+  $.getJSON("proxy.php", {
+      "send_cookies" : 1,
+      "mode" : "native",
+      "url" : url
+    }, callback);
+}
+
+function handleLookupResults(data) {
+  console.log("lookup data", data);
+  if (data.persons && data.persons[0]) {
+    var $results = $("#lookupForm");
+    var person = data.persons[0]
+    var father;
+    var mother;
+    var spouseId;
+    var spouseType;
+    if (person.families[0].parent[1] && person.id == person.families[0].parent[0].id) {
+      father = extractPersonData(person);;
+      mother = {id: person.families[0].parent[1] ? person.families[0].parent[1].id : ""};
+      spouseId = mother.id;
+      spouseType = "mother";
+      updatePersonData(father, "father");    
+    } else {
+      mother = extractPersonData(person);;
+      father = {id: person.families[0].parent[1] ? person.families[0].parent[0].id : ""};
+      spouseId = father.id;
+      spouseType = "father";
+      updatePersonData(mother, "mother");    
+    }
+
+    var lookups = [];
+    lookups.push(spouseId);
+    
+    var children = [];
+    if (person.families[0].child) {
+      $.each(person.families[0].child, function(i,item) {
+        console.log(i, item);
+        children.push({id: item.id})
+        lookups.push(item.id);
+      });
+    }
+    var allLookups = splitArray(lookups, 10);
+    var childrenArray = [];
+    var childIndex = 1;
+    $.each(allLookups, function(i, arrayChunk) {
+      getData("familytree/v2/person/"+arrayChunk.join(","), function(mydata) {
+        console.log("family data", data);
+        if (mydata.persons && mydata.persons.length > 0) {
+          $.each(mydata.persons, function(i,item) {
+            var newPerson = extractPersonData(item);
+            if (spouseId == newPerson.id) {
+              updatePersonData(newPerson, spouseType);    
+            } else {
+              childrenArray.push(newPerson);    
+            }
+          });
+        }
+        if (childrenArray.length == children.length) {
+          handleChildren(childrenArray);
+        }
+      });
+    });
+
+//    $.each(children, function(i,child) {
+//      children[i] = lookupPersons[child.id];
+//    });
+//      
+//    $.each(children, function(i,child) {
+//      $(".addlink a").click();
+//      var index = "child"+(i+1);
+//      $("#"+index+"_name").val(child.name).change();
+//      $("#"+index+"_birth").val(child.birthDate).change();
+//      $("#"+index+"_death").val(child.deathDate).change();    
+//    });
+  }
+  
+}
+
+function handleChildren(array) {
+//  this.remainingRequests--;
+//  if (this.remainingRequests == 0) {
+    array.sort(sortfunction);
+    $.each(array, function(i,child) {
+      $(".addlink a").click();
+      updatePersonData(child, "child"+(i+1));
+    });
+    $(".loading").removeClass("loading");
+//  }
+}
+
+function updatePersonData(person, type) {
+  $("#"+type+"_name").val(person.name || "").change();
+  $("#"+type+"_birth").val(person.birthDate || "").change();
+  $("#"+type+"_death").val(person.deathDate || "").change();
+  if (type == "father") {
+    $("#"+type+"_marriage").val(person.marriage || "").change();
+  }    
+}
+
+function extractPersonData(data) {
+  var result = {id: data.id, name: "", marriage: "", birthDate: "", deathDate: ""}
+  result.name = data.assertions.names[0].value.forms[0].fullText;
+  if (data.assertions.genders[0].value.type == "Male" && data.families && data.families[0].marriage && data.families[0].marriage.value.date) {
+    result.marriage = data.families[0].marriage.value.date.normalized;
+  }
+  $.each(data.assertions.events, function(i, item) {
+    console.log(i, item);
+    if (item.value.type == "Birth" && item.value.date) {
+      result.birthDate = item.value.date.normalized;
+      if (item.value.date.astro) {
+        result.sortDate = item.value.date.astro.earliest;
+      }
+    }
+    if (item.value.type == "Death" && item.value.date) {
+      result.deathDate = item.value.date.normalized;
+    }
+  });
+  return result;
+}
+
+function signOut() {
+  $.cookie("fssessionid", "");
+  getData("identity/v2/logout", null);
+}
+
+function splitArray(arr,count) {
+  var res = {};
+  for (var i=0;i<arr.length;i+=count) {
+    res[i]=arr.slice(i,(i+count));
+  }
+  return res;
+}
+
+function sortfunction(a, b){
+  return a.sortDate - b.sortDate;
+}

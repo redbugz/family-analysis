@@ -9,11 +9,30 @@
 	<link rel="stylesheet" href="print.css" type="text/css" media="print" charset="utf-8">
 
 	<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.6/jquery.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.9/jquery-ui.min.js"></script>
+	<script src="jquery.cookie.js" type="text/javascript" charset="utf-8"></script>
 	<script src="family.js" type="text/javascript" charset="utf-8"></script>
 </head>
 <body>
 	<div id="page">
 		<section id="sidebar">
+  		<div class="lookup">
+  		  <h2>FamilySearch</h2>
+  		  <div class="welcome">
+          <span>Welcome Guest</span><br>
+          <a id="authlink" href="oauth.php">Sign In</a>
+  		  </div>
+        <div id="lookupForm" style="display:none">
+    		  <section class="textbox">
+    		    <label for="fsid">ID</label>
+    		    <input type="text" id="fsid" value="KWQP-L3N" />
+    		  </section>
+    		  <div class="spinner">
+    		    <input id="lookupButton" type="button" name="submit" value="Read family from FamilySearch" />
+    		  </div>
+        </div>
+  		</div>
+
 			<div class="person">
 				<h2>Father</h2>
 

@@ -9,8 +9,11 @@ body					{ padding: 50px 0; font-family: "Lucida Grande", Helvetica, Arial, sans
 /* Sidebar */
 /* -------------------------------------------------- */
 
-.person + .person		{ border-top: dotted 1px #bbb; margin-top: 1em; }
-.person h2				{ font-size: 14px; margin: 1em 0 .5em 0; color: #345678; }
+.person		{ border-top: dotted 1px #bbb; margin-top: 1em; }
+#sidebar h2				{ font-size: 14px; margin: 1em 0 .5em 0; color: #345678; }
+.welcome {
+  font-size: 12px;
+}
 .person > a				{ margin-top: 1em; font-size: .7em; color: #666; display: inline-block; }
 
 .textbox				{ position: relative; }
@@ -57,3 +60,5 @@ table.analysis td li	{ display: inline-block; margin-right: 15px; line-height: 1
 
 #content #container h2	{ margin-bottom: 0; }
 #content #container h3	{ margin: .25em 0 .5em 0; font-weight: normal; font-size: .7em; color: #999; }
+.spinner.loading{background:url('89.gif') no-repeat right;}
+
