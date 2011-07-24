@@ -3,7 +3,14 @@
 // put your developer key and URL in config.php
 include 'config.php';
 $consumer_key = $developer_key; # from config.php
-$oauth_callback = urlencode($callback_url); # from config.php
+if (empty($_SESSION["returnURL"])) {
+if (isset($_GET["returnURL"])) {
+  $_SESSION["returnURL"] = $_GET["returnURL"];
+} else {
+  $_SESSION["returnURL"] = $_SERVER['HTTP_REFERER'];
+}
+}
+$oauth_callback = urlencode(currentPageURL()); # from config.php
 $server = $api_host; # from config.php
 
 # Production code should pull these from https://api.familysearch.org/identity/v2/properties
@@ -19,7 +26,8 @@ if ($_GET["oauth_verifier"] == NULL) {
  $response = getRequestToken($server, $requestUrl, $oauth_callback, $consumer_key);
 // print_r($response);
  $_SESSION['oauth_token_secret'] = $response['oauth_token_secret'];
- $content = '<span>You need to authenticate with FamilySearch to continue.<br/><br/><a href="'.$server.$authorizeUrl.'?oauth_token='.$response['oauth_token'].'"><button id="authlink" >Sign In to FamilySearch</button></a></span>';
+ $redirect = "$server$authorizeUrl".'?oauth_token='.$response['oauth_token'];
+ $content = '<span>You need to authenticate with FamilySearch to continue.<br/><br/><a href="'.$redirect.'"><button id="authlink" >Sign In to FamilySearch</button></a></span>';
 }
 
 /*-----------------------------------------
@@ -32,11 +40,11 @@ if ($_GET["oauth_verifier"] != NULL) {
  setcookie("fssessionid", $sessionId);
 
  $content = "<br />Authentication to FamilySearch successful.<br />";
- $content .= "<br/><a href='index.html'><button>Continue back to your application</button></a>";
+ $redirect = $_SESSION["returnURL"];
+ $content .= "<br/><a href='$redirect'><button>Continue back to your application</button></a>";
  $debuginfo = "Your user info is:<br/>sessionId: ".$sessionId."<br/>";
  $debuginfo .= htmlentities(http($server."/familytree/v2/user/?dataFormat=application/json&sessionId=".$sessionId));
-
- 
+   
  session_destroy();
 }
 
@@ -94,8 +102,21 @@ if ($_GET["oauth_verifier"] != NULL) {
    curl_close ($ch);
    return $response;
  }
-?>
 
+function currentPageURL() {
+ $pageURL = 'http';
+ if ($_SERVER["HTTPS"] == "on") {$pageURL .= "s";}
+ $pageURL .= "://";
+ if ($_SERVER["SERVER_PORT"] != "80") {
+  $pageURL .= $_SERVER["SERVER_NAME"].":".$_SERVER["SERVER_PORT"].$_SERVER["REQUEST_URI"];
+ } else {
+  $pageURL .= $_SERVER["SERVER_NAME"].$_SERVER["REQUEST_URI"];
+ }
+ return $pageURL;
+}
+
+if(isset($_GET["debug"])){
+?>
 <html>
  <head>
    <title>FamilySearch OAuth Client</title>
@@ -106,10 +127,21 @@ if ($_GET["oauth_verifier"] != NULL) {
 
 <div class="content">   
    <p class="message"><?php print_r($content); ?></p>
-   <p class="error"><?php print_r($message); ?></p> 
+   <p class="error"><?php print_r($message); ?></p>
+   <p class="info">redirect: <?php print_r($redirect); ?></p> 
+   <p class="info">oauth_callback: <?php print_r($oauth_callback); ?></p> 
    <hr style="margin-top:40px">  
    <p class="info"><?php print_r($response); ?></p>
    <p class="info"><?php print_r($debuginfo); ?></p>
+   <p class="info">PATH_INFO: <?php print_r($_SERVER["PATH_INFO"]); ?></p>
+   <p class="info">REQUEST_URI: <?php print_r($_SERVER['REQUEST_URI']); ?></p>
+   <p class="info">SESSION: <?php print_r($_SESSION); ?></p>
+   <p class="info">SERVER: <?php print_r($_SERVER); ?></p>
 </div> 
 </body>
 </html>
+<?
+} else {
+  header("Location: $redirect");
+}  
+?>
